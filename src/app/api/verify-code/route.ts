@@ -2,60 +2,55 @@ import dbConnect from "@/lib/dbConnect";
 import UserModel from "@/model/user";
 
 export async function POST(request: Request) {
-    await dbConnect()
+    await dbConnect();
 
     try {
-        const {username, code}= await request.json()
+        const { username, code } = await request.json();
 
-        const decodedUsername= decodeURIComponent(username)
-        const user = await UserModel.findOne({username: decodedUsername})
+        // Find the user by username
+        const user = await UserModel.findOne({ username });
 
-        if(!user){
+        if (!user) {
             return Response.json({
                 success: false,
                 message: "User not found"
-                },
-                {status: 500}
-            )  
+            }, { status: 404 });
         }
 
-        const isCodeValid = user.verifyCode === code
-        const isCodeNotExpired = new Date(user.verifyCodeExpiry) > new Date()
-
-        if (isCodeValid && isCodeNotExpired){
-            user.isVerified = true
-            await user.save()
-
-            return Response.json({
-                success: true,
-                message: "Account Verified Successfully"
-            },
-            {status: 200}
-            )
-        }else if(!isCodeNotExpired){
+        // Check if the verification code matches
+        if (user.verifyCode !== code) {
             return Response.json({
                 success: false,
-                message: "Verification code expired, please sign-up again to get a new code"
-            },
-            {status: 400}
-            )
-        }else{
-            return Response.json({
-                success: false,
-                message: "Incorrect Verification Code"
-            },
-            {status: 400}
-            )
+                message: "Verification code does not match"
+            }, { status: 400 });
         }
+
+        // Check if the verification code has expired
+        if (user.verifyCodeExpiry < new Date()) {
+            return Response.json({
+                success: false,
+                message: "Verification code has expired"
+            }, { status: 400 });
+        }
+
+        // Update user to verified status
+        // Instead of setting to empty string, keep the code but mark as verified
+        user.isVerified = true;
+        
+        // Save the changes
+        await user.save();
+
+        return Response.json({
+            success: true,
+            message: "Account verified successfully!"
+        }, { status: 200 });
 
     } catch (error) {
-        console.error("Error verifying user", error)
+        console.error("Error verifying account:", error);
         return Response.json({
             success: false,
-            message: "Error verifying user"
-        },
-        {status: 500}
-    )
+            message: "Error verifying account"
+        }, { status: 500 });
     }
 }
 

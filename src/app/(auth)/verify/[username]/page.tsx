@@ -1,86 +1,60 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { verifySchema } from '@/schemas/VerifySchema';
+import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import axios, { AxiosError } from 'axios';
-
-// --- Helper Functions and Schemas (Replaces External Imports) ---
-
-// Replicates useRouter and useParams from 'next/navigation'
-const useRouter = () => ({
-  replace: (path: string) => {
-    if (typeof window !== 'undefined') {
-      console.log(`Navigating to: ${path}`);
-    }
-  }
-});
-
-const useParams = <T extends object>(): T => {
-  // In a real Next.js app, this would parse the URL. For this environment,
-  // we can return a mock object. We'll assume the username is 'testuser'.
-  return { username: 'testuser' } as T;
-};
-
-
-// Replicates verifySchema from '@/schemas/verifySchema'
-const verifySchema = z.object({
-  code: z.string().length(6, { message: 'Verification code must be 6 digits' }),
-});
-
-// Replicates ApiResponse type from '@/types/ApiResponse'
-interface ApiResponse {
-  message: string;
-  success: boolean;
-}
-
-// --- Main Page Component ---
+import { toast } from 'sonner';
+import * as z from 'zod';
+import { Loader2 } from 'lucide-react';
 
 const VerifyAccount = () => {
   const router = useRouter();
   const params = useParams<{ username: string }>();
-
-  // Mock useToast hook
-  const useToast = () => ({
-    toast: (options: { title: string, description: string, variant?: string }) => {
-      alert(`${options.title}: ${options.description}`);
-    }
-  });
-  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof verifySchema>>({
     resolver: zodResolver(verifySchema),
+    defaultValues: {
+      code: '',
+    },
   });
 
   const onSubmit = async (data: z.infer<typeof verifySchema>) => {
+    setIsSubmitting(true);
     try {
-      // In a real app, this would be the actual API call
-      // const response = await axios.post(`/api/verify-code`, {
-      //   username: params.username,
-      //   code: data.code,
-      // });
-
-      // --- MOCKING API CALL FOR THIS ENVIRONMENT ---
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const mockResponse = { data: { message: 'Account verified successfully!', success: true } };
-      // --- END OF MOCK ---
-
-      toast({
-        title: "Success",
-        description: mockResponse.data.message,
+      // Call the API to verify the code
+      const response = await axios.post('/api/verify-code', {
+        username: params.username,
+        code: data.code,
       });
 
-      router.replace("/sign-in");
-
+      // Show success message with alert
+      alert("Verification successful");
+      
+      // Also show toast message
+      toast.success(response.data.message);
+      
+      // Redirect to sign-in page
+      router.replace('/sign-in');
     } catch (error) {
       console.error("Error during account verification:", error);
-      const axiosError = error as AxiosError<ApiResponse>;
-      toast({
-        title: "Verification Failed",
-        description: axiosError.response?.data.message ?? 'An unexpected error occurred.',
-        variant: "destructive",
-      });
+      const axiosError = error as AxiosError<{ message: string, success: boolean }>;
+      
+      // Show error message with alert
+      if (axiosError.response?.data.message === "Verification code does not match") {
+        alert("Wrong verification code");
+      } else {
+        alert(axiosError.response?.data.message ?? 'An unexpected error occurred.');
+      }
+      
+      // Also show toast error
+      toast.error(axiosError.response?.data.message ?? 'An unexpected error occurred.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -108,8 +82,19 @@ const VerifyAccount = () => {
               </p>
             )}
           </div>
-          <button type="submit" className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-            Submit
+          <button 
+            type="submit" 
+            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <div className="flex items-center justify-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verifying...
+              </div>
+            ) : (
+              'Submit'
+            )}
           </button>
         </form>
       </div>

@@ -8,16 +8,21 @@ export async function sendVerificationEmail(
     verifyCode: string
 ): Promise<ApiResponse> {
     try {
-        await resend.emails.send({
+        // Log the API key (first few characters only for security)
+        const apiKey = process.env.RESEND_API_KEY;
+        console.log("Using Resend API Key (first 5 chars):", apiKey ? apiKey.substring(0, 5) : "undefined");
+        
+        const data = await resend.emails.send({
             from: 'onboarding@resend.dev',
             to: email,
             subject: 'ShadowSpeak | Verification code',
             react: VerificationEmail({username, otp:verifyCode}),
         });
+        
+        console.log("Email sent successfully:", data);
         return {success: true, message: 'Verification email sent successfully'}
     } catch (emailError) {
-        console.error("Error sending verification email", emailError)
+        console.error("Error sending verification email:", emailError);
         return {success: false, message: 'Failed to send verification email'}
-        
     }    
 }

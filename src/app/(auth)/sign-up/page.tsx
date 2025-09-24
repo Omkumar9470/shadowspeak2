@@ -1,76 +1,22 @@
-'use client'
+'use client';
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import axios, { AxiosError } from "axios";
-
-// --- Helper Functions and Schemas (Replaces External Imports) ---
-
-// Replicates useDebounce from 'usehooks-ts'
-const useDebounce = <T,>(value: T, delay: number): T => {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-  return debouncedValue;
-};
-
-// Replicates useRouter from 'next/navigation'
-const useRouter = () => ({
-  replace: (path: string) => {
-    if (typeof window !== 'undefined') {
-      console.log(`Navigating to: ${path}`);
-      // In a real app, this changes the URL. Here we log it for demonstration.
-    }
-  }
-});
-
-// Replicates signUpSchema from '@/schemas/signUpSchema'
-const signUpSchema = z.object({
-  username: z.string().min(2, "Username must be at least 2 characters"),
-  email: z.string().email({ message: "Invalid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-});
-
-// Replicates ApiResponse type from '@/types/ApiResponse'
-interface ApiResponse {
-  message: string;
-  success: boolean;
-}
-
-// Mock Loader icon
-const Loader2 = ({ className }: { className?: string }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
-);
-
-
-// --- Main Page Component ---
+import { signUpSchema } from "@/schemas/SignUpSchema";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { ApiResponse } from "@/types/ApiResponse";
 
 const SignUpForm = () => {
   const [username, setUsername] = useState('');
   const [usernameMessage, setUsernameMessage] = useState('');
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const debouncedUsername = useDebounce(username, 300);
-
   const router = useRouter();
-  
-  // Mock useToast hook based on reference
-  const useToast = () => ({
-    toast: (options: { title: string, description: string, variant?: string }) => {
-      alert(`${options.title}: ${options.description}`);
-    }
-  });
-  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
@@ -81,66 +27,55 @@ const SignUpForm = () => {
     },
   });
 
+  // Check username uniqueness when user stops typing
   useEffect(() => {
     const checkUsernameUnique = async () => {
-      if (debouncedUsername) {
-        setIsCheckingUsername(true);
-        setUsernameMessage(''); // Reset message
-        try {
-          // Mocking the API call for demonstration in this environment
-          await new Promise(resolve => setTimeout(resolve, 500));
-          const response = { data: { message: 'Username is unique', success: true } }; // Mock success
-          // In a real app, this would be:
-          // const response = await axios.get<ApiResponse>(
-          //   `/api/check-username-unique?username=${debouncedUsername}`
-          // );
-          setUsernameMessage(response.data.message);
-        } catch (error) {
-          const axiosError = error as AxiosError<ApiResponse>;
-          setUsernameMessage(
-            axiosError.response?.data.message ?? 'Error checking username'
-          );
-        } finally {
-          setIsCheckingUsername(false);
+      if (username.length < 2) {
+        setUsernameMessage('');
+        return;
+      }
+
+      setIsCheckingUsername(true);
+      try {
+        const response = await axios.get(`/api/check-username-unique?username=${encodeURIComponent(username)}`);
+        setUsernameMessage(response.data.message);
+      } catch (error: any) {
+        if (axios.isAxiosError(error)) {
+          setUsernameMessage(error.response?.data.message || 'Error checking username');
         }
+      } finally {
+        setIsCheckingUsername(false);
       }
     };
-    checkUsernameUnique();
-  }, [debouncedUsername]);
+
+    // Debounce the API call
+    const timeoutId = setTimeout(() => {
+      if (username) {
+        checkUsernameUnique();
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [username]);
 
   const onSubmit = async (data: z.infer<typeof signUpSchema>) => {
     setIsSubmitting(true);
     try {
-      // In a real app, this axios.post call would hit your backend API.
-      // The backend would then handle user creation and sending the verification email.
-      // const response = await axios.post<ApiResponse>('/api/sign-up', data);
-
-      // --- MOCKING API CALL FOR THIS ENVIRONMENT ---
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // The backend would typically send back a message like this on success.
-      const mockResponse = { data: { message: 'Successfully registered! A verification code has been sent to your email.', success: true } };
-      // --- END OF MOCK ---
-
-      toast({
-        title: 'Success',
-        description: mockResponse.data.message,
-      });
-
-      // Redirect to the page where the user can enter the verification code.
+      const response = await axios.post<ApiResponse>('/api/sign-up', data);
+      
+      // Fixed toast format
+      toast.success(response.data.message);
+  
       router.replace(`/verify/${data.username}`);
-
     } catch (error) {
       console.error('Error during sign-up:', error);
       const axiosError = error as AxiosError<ApiResponse>;
       let errorMessage = axiosError.response?.data.message ?? 'There was a problem with your sign-up. Please try again.';
-
-      toast({
-        title: 'Sign Up Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+  
+      // Fixed error toast format
+      toast.error(errorMessage);
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -166,12 +101,17 @@ const SignUpForm = () => {
                         setUsername(e.target.value);
                     }}
                 />
-                {isCheckingUsername && <Loader2 className="animate-spin mt-2" />}
+                {isCheckingUsername && (
+                  <div className="flex items-center mt-2 text-gray-500">
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    Checking username...
+                  </div>
+                )}
                 {!isCheckingUsername && usernameMessage && (
                     <p className={`text-sm mt-2 ${
-                        usernameMessage === 'Username is unique'
-                            ? 'text-green-500'
-                            : 'text-red-500'
+                        usernameMessage === 'Username is available' 
+                          ? 'text-green-500' 
+                          : 'text-red-500'
                     }`}>
                         {usernameMessage}
                     </p>
