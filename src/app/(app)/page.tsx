@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react'; // Assuming you have an icon for messages
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import Autoplay from 'embla-carousel-autoplay'; // Import Autoplay directly
+import Autoplay from 'embla-carousel-autoplay';
 import messages from '@/messages.json';
 
 import {
@@ -40,7 +40,7 @@ export default function Home() {
               <CarouselItem key={index} className="p-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>{message.tittle}</CardTitle>
+                    <CardTitle>{message.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-col md:flex-row items-start space-y-2 md:space-y-0 md:space-x-4">
                     <Mail className="flex-shrink-0" />
