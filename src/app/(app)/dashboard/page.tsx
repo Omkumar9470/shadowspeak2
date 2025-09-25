@@ -20,18 +20,9 @@ const page = () => {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isSwitchLoading, setIsSwitchLoading] = useState<boolean>(false)
-
-
-  const handleDeleteMessage = (messageId: string) => {
-    setMessages(messages.filter(message => message._id !== messageId))
-  }
-
   const { data: session } = useSession();
-
-  if (!session || !session.user) {
-    return <div>Please Login</div>;
-  }
-
+  
+  // Move useForm before any conditional returns
   const form = useForm({
     resolver: zodResolver(acceptMessageSchema),
     defaultValues: {
@@ -40,8 +31,11 @@ const page = () => {
   });
 
   const {register, watch, setValue} = form;
-
   const acceptMessage = watch('acceptMessage');
+
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages(messages.filter(message => message._id !== messageId))
+  }
 
   const fetchAcceptMessage = useCallback(async () => {
     setIsSwitchLoading(true)
@@ -96,6 +90,11 @@ const page = () => {
       const axiosError = error as AxiosError<ApiResponse>;
       toast.error(axiosError.response?.data.message ?? 'Failed to update message settings');
     }
+  }
+
+  // Conditional return after all hooks are called
+  if (!session || !session.user) {
+    return <div>Please Login</div>;
   }
 
   const { username } = session.user;

@@ -41,22 +41,29 @@ export default function SignInForm() {
       password: data.password,
     });
 
+    // For debugging: log the result from signIn
+    console.log('Sign-in attempt result:', result);
+
     if (result?.error) {
-      if (result.error === 'CredentialsSignin') {
-        toast.error('Login Failed', {
-          description: 'Incorrect username or password.',
-        });
-      } else {
-        toast.error('Login Failed', {
-          description: result.error,
-        });
-      }
+      // Stop submission indicator
+      setIsSubmitting(false);
+      
+      // Display the alert message
+      alert('please enter a correct username and passwoard');
+
+      // Also show a toast for better UI feedback
+      toast.error('Login Failed', {
+        description: 'Please enter a correct username and password.',
+      });
     }
 
     if (result?.url) {
+      // On success, redirect to the dashboard
       router.replace('/dashboard');
+    } else if (!result?.error) {
+      // If there's no error but also no URL, stop the loading state
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
