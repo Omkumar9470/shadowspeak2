@@ -74,21 +74,23 @@ const page = () => {
     if (!session || !session.user) return;
     fetchAcceptMessage();
     fetchMessages();
-  },[session, fetchAcceptMessage, fetchMessages, setValue]);
+  },[session?.user?._id, setValue, fetchAcceptMessage, fetchMessages]);
   
   // handle switch change 
-  const handleSwitchChange = async () => {
+  const handleSwitchChange = async (checked: boolean) => {
     try {
       const response = await axios.post<ApiResponse>('/api/accept-messages', {
-        acceptMessage: !acceptMessage
+        acceptMessage: checked
       })
-      setValue('acceptMessage', !acceptMessage);
+      setValue('acceptMessage', checked);
       toast.success(response.data.message, {
-        description: `Messages are now ${!acceptMessage ? 'ON' : 'OFF'}`
+        description: `Messages are now ${checked ? 'ON' : 'OFF'}`
       });
     } catch (error) {
       const axiosError = error as AxiosError<ApiResponse>;
       toast.error(axiosError.response?.data.message ?? 'Failed to update message settings');
+      // Revert the UI state if the API call fails
+      setValue('acceptMessage', !checked);
     }
   }
 
@@ -103,6 +105,7 @@ const page = () => {
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(profileUrl)
+    alert('copied to clipboard');
     toast.success('URL copied', {
       description: 'Profile URL copied to clipboard',
     });
