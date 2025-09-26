@@ -1,15 +1,16 @@
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import UserModel from "@/model/user";
-import { NextRequest } from "next/server";
 
+// Use the correct type definition for App Router route handlers
 export async function GET(
   request: NextRequest,
-  { params }: { params: { username: string } }
+  context: { params: { username: string } }
 ) {
   await dbConnect();
 
   try {
-    const username = params.username;
+    const username = context.params.username;
 
     // Find the user by username
     const user = await UserModel.findOne({ 
@@ -18,7 +19,7 @@ export async function GET(
     });
 
     if (!user) {
-      return Response.json(
+      return NextResponse.json(
         {
           success: false,
           message: "User not found",
@@ -28,7 +29,7 @@ export async function GET(
     }
 
     // Return only necessary user data
-    return Response.json(
+    return NextResponse.json(
       {
         success: true,
         user: {
@@ -40,7 +41,7 @@ export async function GET(
     );
   } catch (error) {
     console.error("Error checking user:", error);
-    return Response.json(
+    return NextResponse.json(
       {
         success: false,
         message: "Failed to check user",
