@@ -36,10 +36,10 @@ const UserProfilePage = () => {
     const checkUser = async () => {
       setIsLoading(true);
       try {
-        // Use our new API endpoint to check if user exists
-        const response = await axios.get<ApiResponse>(`/api/check-user/${username}`);
+        // Use the new API endpoint with query parameter
+        const response = await axios.get<ApiResponse>(`/api/check-user?username=${username}`);
         setUserExists(true);
-        setIsAcceptingMessages(!!response.data.isAcceptingMessages);
+        setIsAcceptingMessages(response.data.isAcceptingMessages ?? false);
       } catch (error) {
         const axiosError = error as AxiosError<ApiResponse>;
         if (axiosError.response?.status === 404) {
